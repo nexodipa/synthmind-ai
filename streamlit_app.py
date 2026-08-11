@@ -4,6 +4,7 @@
 import json
 import streamlit as st
 from gemini_engine import extract_text_from_file, run_gemini_analysis
+from report_generator import generate_markdown_report, generate_html_report
 
 # Configuración de página
 st.set_page_config(
@@ -12,6 +13,10 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Inicializar créditos en Session State
+if "credits" not in st.session_state:
+    st.session_state.credits = 3
 
 # Estilos CSS personalizados para mejorar la estética oscura
 st.markdown("""
@@ -24,10 +29,16 @@ st.markdown("""
         border-radius: 4px;
         font-weight: 600;
         font-size: 0.8rem;
+        display: inline-block;
     }
     .badge-fuerte { background-color: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
     .badge-moderado { background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
     .badge-debil { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+    
+    .badge-alta { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); }
+    .badge-media { background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
+    .badge-baja { background-color: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.2); }
+
     .quote-block {
         border-left: 3px solid #10b981;
         padding-left: 10px;
@@ -44,6 +55,10 @@ st.markdown("""
 with st.sidebar:
     st.image("https://img.icons8.com/nolan/96/brain.png", width=64)
     st.title("SynthMind AI")
+    
+    # Mostrar indicador de créditos
+    st.info(f"⚡ **Créditos Gratuitos Restantes:** {st.session_state.credits} / 3")
+    
     st.markdown("---")
     
     st.subheader("⚙️ Configuración")
@@ -63,6 +78,20 @@ with st.sidebar:
         index=0,
         help="Gemini 2.5 Flash es rápido y económico. Gemini 2.5 Pro es recomendado para razonamientos extensos o complejos."
     )
+
+    # Selección de Especialización
+    specialization = st.selectbox(
+        "Efoque de Especialización",
+        options=[
+            ("general", "General (Estándar)"),
+            ("academic", "Investigación Académica"),
+            ("legal", "Auditoría Jurídica / Legal"),
+            ("financial", "Finanzas y Negocios")
+        ],
+        index=0,
+        format_func=lambda x: x[1],
+        help="Ajusta las directrices internas del Agente de IA para enfocarse en un área disciplinaria específica."
+    )[0]
     
     st.markdown("---")
     st.markdown("💡 [Obtener API Key Gratis](https://aistudio.google.com/)")
@@ -90,8 +119,18 @@ with col_left:
         format_func=lambda x: x[1]
     )[0]
 
-    # Botón de ejecución
-    run_btn = st.button("🚀 Iniciar Análisis Agéntico", use_container_width=True)
+    # Lógica de Paywall / Botón de análisis
+    if st.session_state.credits <= 0:
+        st.error("⚠️ **Límite Gratuito Alcanzado**")
+        st.markdown("""
+        Has agotado tus 3 análisis diarios de cortesía. 
+        Para seguir procesando documentos de forma ilimitada y desbloquear las exportaciones automáticas de reportes, adquiere el plan Pro.
+        
+        👉 **[Suscribirse a SynthMind AI Premium (Stripe)](https://stripe.com)**
+        """)
+        run_btn = st.button("🚀 Iniciar Análisis Agéntico (Bloqueado)", disabled=True, use_container_width=True)
+    else:
+        run_btn = st.button("🚀 Iniciar Análisis Agéntico", use_container_width=True)
 
 with col_right:
     st.subheader("📊 Resultados del Análisis")
@@ -116,13 +155,17 @@ with col_right:
                             document_text=document_text,
                             analysis_type=analysis_type,
                             api_key=api_key_input if api_key_input else None,
-                            model_name=model_name
+                            model_name=model_name,
+                            specialization=specialization
                         )
                         
-                        # 3. Guardar en Session State
+                        # 3. Guardar en Session State y restar crédito
                         st.session_state["last_result"] = json.loads(result_raw)
                         st.session_state["last_type"] = analysis_type
-                        st.success("¡Análisis completado con éxito!")
+                        st.session_state.credits -= 1
+                        
+                        # Recargar la app para actualizar contador de la barra lateral
+                        st.rerun()
                         
                 except Exception as e:
                     st.error(f"Error durante el análisis: {str(e)}")
@@ -132,16 +175,40 @@ with col_right:
         data = st.session_state["last_result"]
         dtype = st.session_state["last_type"]
         
-        # Botones de exportación rápida
-        col_dl, col_cp = st.columns([1, 1])
-        with col_dl:
+        # Botones de exportación avanzada
+        st.markdown("### 📥 Exportar Resultados")
+        col_j, col_md, col_html = st.columns(3)
+        
+        with col_j:
             st.download_button(
-                "📥 Descargar Informe JSON",
+                "📥 Descargar JSON",
                 data=json.dumps(data, indent=2, ensure_ascii=False),
                 file_name=f"synthmind_report_{dtype}.json",
                 mime="application/json",
                 use_container_width=True
             )
+            
+        with col_md:
+            md_report = generate_markdown_report(data, dtype)
+            st.download_button(
+                "📝 Descargar Word (MD)",
+                data=md_report,
+                file_name=f"synthmind_report_{dtype}.md",
+                mime="text/markdown",
+                use_container_width=True
+            )
+            
+        with col_html:
+            html_report = generate_html_report(data, dtype)
+            st.download_button(
+                "🖥️ Imprimir Reporte (HTML)",
+                data=html_report,
+                file_name=f"synthmind_report_{dtype}.html",
+                mime="text/html",
+                use_container_width=True
+            )
+
+        st.markdown("---")
 
         if dtype == "concepts":
             metadata = data.get("document_metadata", {})

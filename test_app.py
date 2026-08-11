@@ -102,3 +102,61 @@ def test_fastapi_analyze_endpoint_invalid_file(mock_run_analysis):
     assert response.status_code == 400
     assert "Tipo de archivo no permitido" in response.json()["detail"]
     mock_run_analysis.assert_not_called()
+
+
+def test_report_generation_functions():
+    """
+    Prueba que los formateadores de Markdown e HTML no exploten y generen texto estructurado.
+    """
+    mock_data = {
+        "document_metadata": {
+            "title": "Documento Cientifico de Prueba",
+            "domain": "Biologia",
+            "document_type": "Articulo",
+            "language": "es",
+            "authors": ["Juan Perez"]
+        },
+        "core_concepts": [
+            {
+                "concept_id": "C01",
+                "name": "Mitocondria",
+                "category": "Organelo",
+                "definition": "Central energetica de la celula.",
+                "confidence_score": 0.95,
+                "textual_quote": "La mitocondria provee la energia necesaria..."
+            }
+        ]
+    }
+    
+    md_result = generate_markdown_report(mock_data, "concepts")
+    assert "Documento Cientifico de Prueba" in md_result
+    assert "Mitocondria" in md_result
+    
+    html_result = generate_html_report(mock_data, "concepts")
+    assert "<html" in html_result
+    assert "Mitocondria" in html_result
+
+
+def test_fastapi_report_endpoints():
+    """
+    Prueba que los endpoints de descarga devuelvan los archivos estructurados correctos.
+    """
+    mock_payload = {
+        "data": {
+            "document_metadata": {"title": "Metadato Test"}
+        },
+        "analysis_type": "concepts"
+    }
+    
+    # Endpoint Markdown
+    response_md = client_test.post("/api/report/markdown", json=mock_payload)
+    assert response_md.status_code == 200
+    assert "text/markdown" in response_md.headers["content-type"]
+    assert "Metadato Test" in response_md.text
+
+    # Endpoint HTML
+    response_html = client_test.post("/api/report/html", json=mock_payload)
+    assert response_html.status_code == 200
+    assert "text/html" in response_html.headers["content-type"]
+    assert "<html" in response_html.text
+

@@ -160,11 +160,12 @@ def run_gemini_analysis(
     document_text: str,
     analysis_type: str,
     api_key: Optional[str] = None,
-    model_name: str = "gemini-2.5-flash"
+    model_name: str = "gemini-2.5-flash",
+    specialization: str = "general"
 ) -> str:
     """
     Realiza la llamada a la API de Gemini configurando la salida estructurada
-    según el tipo de análisis solicitado.
+    según el tipo de análisis y especialización solicitada.
     """
     # 1. Resolver API Key (Entorno o parámetro dinámico)
     resolved_api_key = api_key or os.getenv("GEMINI_API_KEY")
@@ -187,15 +188,24 @@ def run_gemini_analysis(
     else:
         raise ValueError(f"Tipo de análisis no válido: {analysis_type}")
 
-    # 4. Configurar la llamada
+    # 4. Modificar System Prompt según especialización
+    system_instruction = SYSTEM_PROMPT
+    if specialization == "academic":
+        system_instruction += "\nENFOQUE DE INVESTIGACIÓN ACADÉMICA Y CIENTÍFICA: Prioriza el rigor metodológico, las variables de estudio, las hipótesis empíricas, la solidez estadística y las limitaciones del diseño experimental del autor. Las preguntas y vacíos deben enfocarse en contribuciones teóricas y futuras líneas de investigación científica."
+    elif specialization == "legal":
+        system_instruction += "\nENFOQUE JURÍDICO Y LEGAL: Enfócate en el análisis de cláusulas contractuales, asignación de responsabilidades, riesgos legales, inconsistencias o contradicciones normativas, y el nivel de cumplimiento regulatorio y legal expuesto en el texto."
+    elif specialization == "financial":
+        system_instruction += "\nENFOQUE FINANCIERO Y DE NEGOCIOS: Prioriza la consistencia de los datos financieros, métricas operativas (EBITDA, ROI, ingresos, costos), proyecciones de mercado, supuestos comerciales de rentabilidad y riesgos macro/microeconómicos analizados en el documento."
+
+    # 5. Configurar la llamada
     config = types.GenerateContentConfig(
-        system_instruction=SYSTEM_PROMPT,
+        system_instruction=system_instruction,
         temperature=0.1,  # Temperatura baja para máxima precisión
         response_mime_type="application/json",
         response_schema=schema,
     )
 
-    # 5. Ejecutar generación
+    # 6. Ejecutar generación
     response = client.models.generate_content(
         model=model_name,
         contents=f"{prompt_instruction}\n\n{document_text}",

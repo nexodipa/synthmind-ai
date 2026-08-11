@@ -4,10 +4,12 @@
 import json
 import os
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from pydantic import BaseModel
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from gemini_engine import extract_text_from_file, run_gemini_analysis
+from report_generator import generate_markdown_report, generate_html_report
 
 app = FastAPI(title="SynthMind AI API", version="1.0.0")
 
@@ -19,6 +21,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class ReportRequest(BaseModel):
+    data: dict
+    analysis_type: str
 
 # SPA HTML integrada para despliegue de archivo único
 HTML_CONTENT = """<!DOCTYPE html>
@@ -93,6 +99,12 @@ HTML_CONTENT = """<!DOCTYPE html>
       </div>
     </div>
     <div class="flex items-center gap-4">
+      <!-- Créditos gratuitos -->
+      <div class="hidden sm:flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full text-xs text-slate-300">
+        <i data-lucide="activity" class="h-3.5 w-3.5 text-emerald-400"></i>
+        <span>Créditos Gratis: <span id="credits-counter" class="font-bold text-emerald-400">3</span>/3</span>
+      </div>
+      
       <a href="https://aistudio.google.com/" target="_blank" class="text-xs text-emerald-400 hover:text-emerald-300 hover:underline flex items-center gap-1">
         <i data-lucide="key" class="h-3 w-3"></i> Consigue tu API Key
       </a>
@@ -131,7 +143,18 @@ HTML_CONTENT = """<!DOCTYPE html>
           <label class="text-xs text-slate-300 font-medium">Modelo Inteligente</label>
           <select id="model-select" class="w-full bg-black/40 border border-white/10 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-emerald-500 text-white transition-all">
             <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (Ultra Rápido y Eficiente)</option>
-            <option value="gemini-2.5-pro">Gemini 2.5 Pro (Razonamiento Complejo y Extenso)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro (Razonamiento Complejo)</option>
+          </select>
+        </div>
+
+        <!-- Especialización Dropdown -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs text-slate-300 font-medium">Especialización de la IA</label>
+          <select id="specialization-select" class="w-full bg-black/40 border border-white/10 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-emerald-500 text-white transition-all">
+            <option value="general" selected>General (Análisis Estándar)</option>
+            <option value="academic">Investigación Académica / Científica</option>
+            <option value="legal">Auditoría Jurídica / Legal</option>
+            <option value="financial">Finanzas y Balances de Negocios</option>
           </select>
         </div>
       </div>
@@ -212,8 +235,13 @@ HTML_CONTENT = """<!DOCTYPE html>
             <button onclick="copyRawJson()" class="text-xs bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg border border-white/10 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
               <i data-lucide="copy" class="h-3 w-3"></i> Copiar JSON
             </button>
-            <button onclick="downloadJsonReport()" class="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1.5 rounded-lg border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-all">
-              <i data-lucide="download" class="h-3 w-3"></i> Descargar
+            
+            <!-- Descargas de Reporte -->
+            <button onclick="downloadReport('markdown')" class="text-xs bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1.5 rounded-lg border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 transition-all">
+              <i data-lucide="file-text" class="h-3 w-3"></i> Reporte (Word)
+            </button>
+            <button onclick="downloadReport('html')" class="text-xs bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1.5 rounded-lg border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-all">
+              <i data-lucide="printer" class="h-3 w-3"></i> Imprimir (PDF)
             </button>
           </div>
         </div>
@@ -273,21 +301,81 @@ HTML_CONTENT = """<!DOCTYPE html>
 
   </main>
 
+  <!-- Modal de Suscripción (Paywall) -->
+  <div id="paywall-overlay" class="fixed inset-0 bg-black/85 backdrop-filter blur-sm z-[1000] flex justify-center items-center opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="glass-card rounded-3xl p-8 max-w-md w-[90%] text-center border border-emerald-500/20 flex flex-col items-center gap-5 shadow-2xl">
+      <div class="h-14 w-14 rounded-full bg-gradient-to-tr from-emerald-400 to-indigo-500 flex justify-center items-center text-white text-xl shadow-lg shadow-emerald-500/20">
+        <i data-lucide="crown"></i>
+      </div>
+      <div>
+        <h3 class="font-display font-extrabold text-white text-lg">Límite Diario Alcanzado</h3>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed">Has utilizado tus 3 créditos de cortesía diaria. Para realizar análisis ilimitados, procesamiento masivo y habilitar las exportaciones estructuradas a PDF, actualiza a la versión Premium.</p>
+      </div>
+      
+      <div class="w-full bg-white/[0.02] border border-white/5 rounded-2xl p-4 text-left flex justify-between items-center">
+        <div>
+          <span class="text-xs font-bold text-white block">Acceso Ilimitado Pro</span>
+          <span class="text-[10px] text-slate-500">Plan Mensual Flexible</span>
+        </div>
+        <span class="text-lg font-extrabold text-emerald-400 font-display">$19 <span class="text-xs text-slate-500 font-normal">/ mes</span></span>
+      </div>
+      
+      <a href="https://stripe.com" target="_blank" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold py-3 px-4 rounded-xl text-sm transition-all text-center flex justify-center items-center gap-2">
+        <i data-lucide="credit-card" class="h-4 w-4"></i> Desbloquear Versión Pro (Stripe)
+      </a>
+      
+      <button onclick="closePaywall()" class="text-xs text-slate-500 hover:text-slate-300">Regresar al panel gratis</button>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="w-full border-t border-white/5 py-4 px-6 text-center text-xs text-slate-500">
-    <p>© 2026 SynthMind AI - Licencia MIT. Construido para Google AI Studio y Gemini 2.5.</p>
+    <p>© 2026 SynthMind AI - Licencia MIT. Desarrollado para Google AI Studio y Gemini 2.5.</p>
   </footer>
 
   <!-- Scripts Logic -->
   <script>
     let activeFile = null;
     let lastAnalysisResult = null;
+    let currentAnalysisType = null;
+    let credits = 3;
 
-    // Inicializar iconos
+    // Inicializar créditos y UI
     document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
       setupFileUploader();
+      initCredits();
     });
+
+    function initCredits() {
+      let savedCredits = localStorage.getItem('synthmind_credits');
+      if (savedCredits === null) {
+        localStorage.setItem('synthmind_credits', '3');
+        savedCredits = '3';
+      }
+      credits = parseInt(savedCredits);
+      document.getElementById('credits-counter').textContent = credits;
+    }
+
+    function decrementCredits() {
+      if (credits > 0) {
+        credits -= 1;
+        localStorage.setItem('synthmind_credits', credits.toString());
+        document.getElementById('credits-counter').textContent = credits;
+      }
+    }
+
+    function showPaywall() {
+      const overlay = document.getElementById('paywall-overlay');
+      overlay.classList.remove('pointer-events-none', 'opacity-0');
+      overlay.classList.add('opacity-100');
+    }
+
+    function closePaywall() {
+      const overlay = document.getElementById('paywall-overlay');
+      overlay.classList.remove('opacity-100');
+      overlay.classList.add('pointer-events-none', 'opacity-0');
+    }
 
     function togglePassword() {
       const input = document.getElementById('api-key');
@@ -351,7 +439,14 @@ HTML_CONTENT = """<!DOCTYPE html>
     document.getElementById('analyze-btn').addEventListener('click', async () => {
       const apiKey = document.getElementById('api-key').value;
       const model = document.getElementById('model-select').value;
+      const specialization = document.getElementById('specialization-select').value;
       const analysisType = document.querySelector('input[name="analysis_type"]:checked').value;
+
+      // Validar créditos locales
+      if (credits <= 0) {
+        showPaywall();
+        return;
+      }
 
       if (!activeFile) {
         alert('Por favor, selecciona un documento PDF o de texto para comenzar.');
@@ -372,6 +467,7 @@ HTML_CONTENT = """<!DOCTYPE html>
       formData.append('file', activeFile);
       formData.append('analysis_type', analysisType);
       formData.append('model', model);
+      formData.append('specialization', specialization);
       if (apiKey) {
         formData.append('api_key', apiKey);
       }
@@ -398,6 +494,10 @@ HTML_CONTENT = """<!DOCTYPE html>
 
         const data = await response.json();
         lastAnalysisResult = data;
+        currentAnalysisType = analysisType;
+        
+        // Restar créditos
+        decrementCredits();
         
         // Dibujar resultados
         loadingContainer.style.display = 'none';
@@ -792,17 +892,35 @@ HTML_CONTENT = """<!DOCTYPE html>
       });
     }
 
-    function downloadJsonReport() {
-      if (!lastAnalysisResult) return;
-      const blob = new Blob([JSON.stringify(lastAnalysisResult, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `synthmind_report_${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    async function downloadReport(format) {
+      if (!lastAnalysisResult || !currentAnalysisType) return;
+      
+      try {
+        const response = await fetch(`/api/report/${format}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            data: lastAnalysisResult,
+            analysis_type: currentAnalysisType
+          })
+        });
+
+        if (!response.ok) throw new Error('Error al descargar reporte');
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `synthmind_report_${currentAnalysisType}.${format === 'markdown' ? 'md' : 'html'}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Error al descargar el archivo: ' + err.message);
+      }
     }
   </script>
 </body>
@@ -826,7 +944,8 @@ async def analyze_document(
     file: UploadFile = File(...),
     analysis_type: str = Form(...),
     api_key: Optional[str] = Form(None),
-    model: str = Form("gemini-2.5-flash")
+    model: str = Form("gemini-2.5-flash"),
+    specialization: str = Form("general")
 ):
     """
     API POST para cargar documentos y ejecutar análisis agénticos estructurados.
@@ -862,7 +981,8 @@ async def analyze_document(
             document_text=document_text,
             analysis_type=analysis_type,
             api_key=api_key,
-            model_name=model
+            model_name=model,
+            specialization=specialization
         )
         
         # Parsear para devolver el objeto JSON formateado
@@ -870,17 +990,32 @@ async def analyze_document(
         return parsed_data
         
     except ValueError as val_err:
-        # Error al resolver la API Key u otros argumentos locales
         raise HTTPException(status_code=400, detail=str(val_err))
     except json.JSONDecodeError:
-        # Falla al decodificar la salida estructurada de Gemini
         raise HTTPException(
             status_code=502, 
             detail="Fallo crítico al validar la salida estructurada. La respuesta de Gemini no se ajusta al esquema JSON requerido."
         )
     except Exception as gen_err:
-        # Cualquier otro error genérico de API o Red
         raise HTTPException(
             status_code=500, 
             detail=f"Fallo del motor agéntico de Gemini: {str(gen_err)}"
         )
+
+@app.post("/api/report/markdown")
+async def get_markdown_report(payload: ReportRequest):
+    md_content = generate_markdown_report(payload.data, payload.analysis_type)
+    return Response(
+        content=md_content,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f"attachment; filename=synthmind_report_{payload.analysis_type}.md"}
+    )
+
+@app.post("/api/report/html")
+async def get_html_report(payload: ReportRequest):
+    html_content = generate_html_report(payload.data, payload.analysis_type)
+    return Response(
+        content=html_content,
+        media_type="text/html",
+        headers={"Content-Disposition": f"attachment; filename=synthmind_report_{payload.analysis_type}.html"}
+    )
