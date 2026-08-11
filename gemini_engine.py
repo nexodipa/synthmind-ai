@@ -1,106 +1,99 @@
 # gemini_engine.py
-# Motor Agéntico de Análisis y Síntesis de Documentos utilizando el SDK google-genai
+# Motor Agéntico de Análisis Documental utilizando la API de Gemini 2.5 (Google GenAI SDK)
+# Implementación estricta con Pydantic, Chain-of-Thought y salida JSON formal
 
-import os
 import io
-from typing import List, Optional, Union
+import os
+from typing import List, Optional
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 from google import genai
 from google.genai import types
 
 # =====================================================================
-# 1. Definición de Esquemas JSON Estructurados vía Pydantic
+# 1. Esquemas JSON Tipados con Pydantic
 # =====================================================================
 
-# --- ESQUEMA A: Mapeo Conceptual y Argumentos ---
 class DocumentMetadata(BaseModel):
-    title: str = Field(description="Título principal o tema central del documento.")
-    authors: List[str] = Field(default=[], description="Lista de autores o entidad creadora.")
-    domain: str = Field(description="Dominio disciplinario (ej. Psicología Organizacional, Neurociencia, Finanzas, etc.).")
-    document_type: str = Field(description="Tipo de documento (ej. Artículo Científico, Reporte Técnico, Ensayo, Whitepaper).")
-    language: str = Field(description="Idioma principal del texto analizado.")
+    title: str = Field(description="Título principal identificado del documento.")
+    authors: List[str] = Field(default_factory=list, description="Lista de autores o entidad emisora.")
+    domain: str = Field(description="Dominio del conocimiento (ej. Biotecnología, Finanzas, Derecho).")
+    document_type: str = Field(description="Tipo de documento (ej. Artículo Científico, Contrato, Reporte Financiero).")
+    language: str = Field(description="Idioma principal del texto.")
 
 class CoreConcept(BaseModel):
-    concept_id: str = Field(description="Identificador único (ej. CON-001).")
-    name: str = Field(description="Nombre del concepto o término especializado.")
-    definition: str = Field(description="Definición dada por el autor o deducida del contexto.")
-    category: str = Field(description="Categoría o nodo taxonómico al que pertenece.")
-    textual_quote: str = Field(description="Cita textual que respalda o define el concepto.")
-    confidence_score: float = Field(description="Grado de certeza del modelo sobre la extracción (0.0 a 1.0).")
+    concept_id: str = Field(description="Identificador único del concepto (ej. C01, C02).")
+    name: str = Field(description="Nombre preciso del concepto clave.")
+    category: str = Field(description="Categoría o tipo (ej. Metodología, Definición, Métrica).")
+    definition: str = Field(description="Definición o síntesis conceptual procesada.")
+    confidence_score: float = Field(description="Índice de certeza de la extracción entre 0.0 y 1.0.")
+    textual_quote: str = Field(description="Cita textual exacta extraída del documento que sirve de evidencia.")
 
 class KeyArgument(BaseModel):
-    argument_id: str = Field(description="Identificador único (ej. ARG-001).")
-    claim_statement: str = Field(description="Declaración o tesis del argumento.")
-    supporting_evidence: List[str] = Field(default=[], description="Datos, estudios o razonamientos que respaldan la tesis.")
-    counterarguments_mentioned: List[str] = Field(default=[], description="Objeciones o posturas contrarias abordadas en el texto.")
-    strength_rating: str = Field(description="Evaluación del rigor y respaldo del argumento. Debe ser: Fuerte, Moderado o Débil / Especulativo")
-    source_section: Optional[str] = Field(default=None, description="Sección, capítulo o número de página aproximado.")
+    argument_id: str = Field(description="Identificador único (ej. ARG01, ARG02).")
+    claim_statement: str = Field(description="Tesis central o afirmación principal planteada por el autor.")
+    supporting_evidence: List[str] = Field(description="Lista de evidencias textuales o cuantitativas que respaldan la afirmación.")
+    counterarguments_mentioned: List[str] = Field(default_factory=list, description="Objeciones o contraargumentos abordados en el texto.")
+    strength_rating: str = Field(description="Evaluación de solidez del argumento: 'Fuerte', 'Moderado' o 'Débil'.")
+    source_section: Optional[str] = Field(default=None, description="Sección o página aproximada donde se ubica.")
 
-class ConceptualTaxonomy(BaseModel):
+class ConceptualTaxonomyNode(BaseModel):
     parent_concept: str = Field(description="Concepto o categoría superior.")
-    child_concepts: List[str] = Field(default=[], description="Subconceptos o componentes derivados.")
-    relationship_type: str = Field(description="Tipo de relación (ej. 'es un tipo de', 'causa', 'contradice', 'complementa').")
+    child_concepts: List[str] = Field(description="Lista de subconceptos o derivados.")
+    relationship_type: str = Field(description="Tipo de relación (ej. 'Jerárquica', 'Causal', 'Complementaria').")
 
 class ConceptAndArgumentMapSchema(BaseModel):
     document_metadata: DocumentMetadata
     core_concepts: List[CoreConcept]
     key_arguments: List[KeyArgument]
-    conceptual_taxonomy: List[ConceptualTaxonomy]
-    data_quality_issues: List[str] = Field(default=[], description="Observaciones sobre fragmentación, imprecisiones u OCR defectuoso en la fuente.")
+    conceptual_taxonomy: List[ConceptualTaxonomyNode]
+    data_quality_issues: List[str] = Field(default_factory=list, description="Problemas detectados como OCR fragmentado o texto incompleto.")
 
-
-# --- ESQUEMA B: Auditoría Crítica y Gaps ---
-class AuditSummary(BaseModel):
-    overall_rigor_score: float = Field(description="Puntaje general de rigor y coherencia (0.0 a 10.0).")
-    methodological_robustness: str = Field(description="Resumen del rigor metodológico o empírico.")
-    primary_bias_detected: str = Field(description="Sesgo principal identificado en la perspectiva del autor o estudio.")
 
 class InternalContradiction(BaseModel):
-    contradiction_id: str = Field(description="Identificador (ej. CTR-001).")
-    statement_a: str = Field(description="Primera afirmación o dato presente en el texto.")
-    statement_b: str = Field(description="Segunda afirmación o dato que la contradice dentro del texto.")
-    analysis: str = Field(description="Explicación de la inconsistencia detectada.")
-    impact_level: str = Field(description="Impacto de la contradicción en la tesis global. Debe ser: Crítico, Moderado o Menor")
+    contradiction_id: str = Field(description="Identificador único (ej. ERR01).")
+    statement_a: str = Field(description="Primera afirmación identificada en el texto.")
+    statement_b: str = Field(description="Segunda afirmación en el texto que contradice a la primera.")
+    analysis: str = Field(description="Explicación detallada de la incompatibilidad lógica.")
+    impact_level: str = Field(description="Nivel de impacto: 'Crítico', 'Moderado' o 'Menor'.")
 
 class IdentifiedGap(BaseModel):
-    gap_id: str = Field(description="Identificador (ej. GAP-001).")
-    category: str = Field(description="Categoría de la brecha. Debe ser: Metodológica, Empírica, Teórica, Muestral o Contextual")
-    description: str = Field(description="Detalle explícito de lo que omite o no justifica el texto.")
-    missing_evidence: str = Field(description="Tipo de dato o prueba que se requeriría para validar la afirmación.")
+    gap_id: str = Field(description="Identificador único (ej. GAP01).")
+    category: str = Field(description="Tipo de vacío: 'Empírico', 'Metodológico', 'Teórico' o 'Normativo'.")
+    description: str = Field(description="Descripción clara de la omisión o falta de evidencia.")
+    missing_evidence: str = Field(description="Especifique qué datos o pruebas adicionales se requerirían.")
 
-class UnansweredResearchQuestion(BaseModel):
-    question_id: str = Field(description="Identificador (ej. REQ-001).")
-    question: str = Field(description="Pregunta de investigación formulada.")
-    relevance: str = Field(description="Por qué esta pregunta es vital para el desarrollo del área.")
+class UnansweredQuestion(BaseModel):
+    question_id: str = Field(description="Identificador único (ej. Q01).")
+    question: str = Field(description="Pregunta de investigación relevante que el texto omite o deja abierta.")
+    relevance: str = Field(description="Justificación de la importancia de esta pregunta.")
 
 class CriticalAnalysisAndGapsSchema(BaseModel):
-    audit_summary: AuditSummary
+    audit_summary: dict = Field(description="Resumen global de rigor lógico, puntuación de 1 a 10 y sesgo identificado.")
     internal_contradictions: List[InternalContradiction]
     identified_gaps: List[IdentifiedGap]
-    unanswered_research_questions: List[UnansweredResearchQuestion]
-    unstated_assumptions: List[str] = Field(default=[], description="Supuestos implícitos no demostrados que da por sentados el autor.")
+    unanswered_research_questions: List[UnansweredQuestion]
+    unstated_assumptions: List[str] = Field(description="Supuestos implícitos no expresados explícitamente por el autor.")
 
 
-# --- ESQUEMA C: Resumen Ejecutivo y Síntesis Accionable ---
 class ExecutiveSummary(BaseModel):
-    tldr: str = Field(description="Resumen ejecutivo en 2-3 oraciones clave.")
-    core_narrative: str = Field(description="Síntesis estructurada del argumento central y contexto.")
-    key_takeaways: List[str] = Field(default=[], description="Puntos de inflexión o hallazgos más determinantes (4-6 ítems).")
-    target_audience: str = Field(description="Perfil o rol para el cual esta síntesis es relevante (ej. Directivos, Investigadores, etc.).")
+    tldr: str = Field(description="Resumen de máximo 2 oraciones (TL;DR).")
+    core_narrative: str = Field(description="Síntesis narrativa ejecutiva de alto nivel (2-3 párrafos).")
+    target_audience: str = Field(description="Público o perfil profesional a quien está dirigido el reporte.")
+    key_takeaways: List[str] = Field(description="De 3 a 5 conclusiones de alto impacto.")
 
 class SynthesisCard(BaseModel):
-    card_id: str = Field(description="Identificador (ej. CRD-001).")
-    topic: str = Field(description="Tema o módulo de conocimiento de la tarjeta.")
-    core_insight: str = Field(description="Hallazgo clave condensado.")
-    actionable_implication: str = Field(description="Qué se debe hacer o cómo aplicar este hallazgo en la práctica.")
-    priority_level: str = Field(description="Grado de urgencia o relevancia práctica. Debe ser: Alta, Media o Baja")
-    key_metrics_or_data: List[str] = Field(default=[], description="Cifras, métricas o referencias de respaldo si existen.")
+    card_id: str = Field(description="Identificador único (ej. CARD01).")
+    topic: str = Field(description="Tema o área de enfoque.")
+    priority_level: str = Field(description="Prioridad: 'Alta', 'Media' o 'Baja'.")
+    core_insight: str = Field(description="Hallazgo sintético clave.")
+    actionable_implication: str = Field(description="Implicación directa para la toma de decisiones.")
+    key_metrics_or_data: List[str] = Field(default_factory=list, description="Cifras o datos clave asociados.")
 
 class StrategicRecommendation(BaseModel):
-    step_number: int = Field(description="Orden secuencial de la recomendación.")
-    action_title: str = Field(description="Título breve de la acción recomendada.")
-    description: str = Field(description="Detalle de ejecución sugerido basado en el análisis del documento.")
+    step_number: int = Field(description="Número de secuencia ejecutiva.")
+    action_title: str = Field(description="Título formal de la recomendación.")
+    description: str = Field(description="Detalle del plan de acción sugerido.")
 
 class ExecutiveSynthesisCardsSchema(BaseModel):
     executive_summary: ExecutiveSummary
@@ -109,35 +102,31 @@ class ExecutiveSynthesisCardsSchema(BaseModel):
 
 
 # =====================================================================
-# 2. System Prompt de Producción
+# 2. System Prompt Oficial (Chain-of-Thought + Protocolo Formal)
 # =====================================================================
+
 SYSTEM_PROMPT = """
-ROL Y MISIÓN PRINCIPAL:
-Eres SynthMind AI, un motor agéntico de investigación y análisis vertical de documentos complejos (artículos científicos, reportes financieros, consultoría, literatura técnica y académica). Tu objetivo principal es descomponer textos densos en conocimiento estructurado, identificar incoherencias o vacíos lógicos con precisión quirúrgica, y generar síntesis altamente accionables sin pérdida de rigor.
+Eres SynthMind AI, un motor agéntico de nivel enterprise diseñado para el análisis crítico, extracción estructurada de conocimientos y auditoría formal de documentos densos.
 
-INSTRUCCIONES DE RAZONAMIENTO AGÉNTICO (CHAIN-OF-THOUGHT & REFLECTION):
-Antes de emitir cualquier salida estructurada, debes ejecutar internamente las siguientes fases agénticas:
-1. FASE DE COMPRENSIÓN Y DESGLOSE (Parse & Deconstruct): Escanea el documento completo identificando la tesis principal, metodología, hipótesis y conceptos clave.
-2. FASE DE AUDITORÍA CRÍTICA (Critical Audit & Gap Spotting): Evalúa la solidez de los argumentos. Busca contradicciones, afirmaciones sin respaldo empírico y sesgos.
-3. FASE DE SÍNTESIS Y ACCIONABILIDAD (Synthesis & Mapping): Condensa la información en estructuras jerárquicas y tarjetas operativas con citas de respaldo.
-4. FASE DE AUTO-CORRECCIÓN Y REVISIÓN (Self-Correction & Schema Verification): Valida que las afirmaciones estén fundamentadas. Toda afirmación debe estar respaldada por citas.
+INSTRUCCIONES DE RAZONAMIENTO Y ESTILO:
+- Tono Formal y Corporativo: Utiliza un lenguaje preciso, riguroso y objetivo. No uses emoticonos, lenguaje informal ni giros coloquiales en tus respuestas.
+- Proceso de Razonamiento (Chain-of-Thought): 
+  1. Escanea el texto fuente identificando la arquitectura de argumentos, metodología y evidencia presentada.
+  2. Evalúa la solidez de las afirmaciones contrastándolas con la evidencia proporcionada.
+  3. Estructura los hallazgos en un formato jerárquico impecable y libre de redundancias.
+- Respaldo Riguroso: Toda cita o evidencia textual debe ser extraída fielmente del documento original sin fabricar información.
 
-MANEJO DE CASOS LÍMITE:
-- OCR Defectuoso/Texto Fragmentado: Registra problemas en 'data_quality_issues' y analiza lo inteligible.
-- Contradicciones: No las reconcilies arbitrariamente, reporta ambas posturas.
-- Cero Alucinaciones: Usa estrictamente citas directas o paráfrasis fieles del texto original.
-- Idioma: Responde siempre en el idioma principal del documento fuente (o en el idioma solicitado por el usuario).
-
-Debes devolver ÚNICAMENTE un objeto JSON válido conforme al esquema requerido.
+Debes devolver ÚNICAMENTE el objeto JSON estricto correspondiente al esquema configurado.
 """
 
+
 # =====================================================================
-# 3. Funciones del Motor Agéntico
+# 3. Funciones de Extracción y Generación
 # =====================================================================
 
 def extract_text_from_file(file_content: bytes, filename: str) -> str:
     """
-    Extrae el texto de un archivo PDF, de texto plano (.txt) o Markdown (.md).
+    Extrae el contenido textual de archivos PDF, TXT y MD.
     """
     if filename.lower().endswith('.pdf'):
         pdf_file = io.BytesIO(file_content)
@@ -149,7 +138,6 @@ def extract_text_from_file(file_content: bytes, filename: str) -> str:
                 text += page_text + "\n"
         return text.strip()
     else:
-        # Asumir texto plano/UTF-8 para txt y md
         try:
             return file_content.decode('utf-8').strip()
         except UnicodeDecodeError:
@@ -164,48 +152,41 @@ def run_gemini_analysis(
     specialization: str = "general"
 ) -> str:
     """
-    Realiza la llamada a la API de Gemini configurando la salida estructurada
-    según el tipo de análisis y especialización solicitada.
+    Llama a la API de Gemini aplicando el esquema estructurado Pydantic y las directrices del nicho.
     """
-    # 1. Resolver API Key (Entorno o parámetro dinámico)
     resolved_api_key = api_key or os.getenv("GEMINI_API_KEY")
     if not resolved_api_key:
-        raise ValueError("No se ha configurado la API Key de Gemini. Configúrala en el entorno o pásala como parámetro.")
+        raise ValueError("API Key de Gemini no encontrada. Configúrela en el entorno o proporciónela en la interfaz.")
 
-    # 2. Inicializar cliente
     client = genai.Client(api_key=resolved_api_key)
 
-    # 3. Seleccionar el esquema correspondiente
     if analysis_type == "concepts":
         schema = ConceptAndArgumentMapSchema
-        prompt_instruction = "Realiza la extracción estructurada de conceptos y argumentos del siguiente documento:"
+        prompt_instruction = "Ejecute la extracción estructurada de conceptos clave, tesis y taxonomía del siguiente texto:"
     elif analysis_type == "gaps":
         schema = CriticalAnalysisAndGapsSchema
-        prompt_instruction = "Realiza la auditoría crítica de brechas, contradicciones e inconsistencias del siguiente documento:"
+        prompt_instruction = "Ejecute la auditoría crítica de consistencia lógica, vacíos empíricos e inconsistencias del siguiente texto:"
     elif analysis_type == "synthesis":
         schema = ExecutiveSynthesisCardsSchema
-        prompt_instruction = "Genera el resumen ejecutivo y las tarjetas de síntesis accionable del siguiente documento:"
+        prompt_instruction = "Ejecute la síntesis ejecutiva, fichas operativas y recomendaciones del siguiente texto:"
     else:
         raise ValueError(f"Tipo de análisis no válido: {analysis_type}")
 
-    # 4. Modificar System Prompt según especialización
     system_instruction = SYSTEM_PROMPT
     if specialization == "academic":
-        system_instruction += "\nENFOQUE DE INVESTIGACIÓN ACADÉMICA Y CIENTÍFICA: Prioriza el rigor metodológico, las variables de estudio, las hipótesis empíricas, la solidez estadística y las limitaciones del diseño experimental del autor. Las preguntas y vacíos deben enfocarse en contribuciones teóricas y futuras líneas de investigación científica."
+        system_instruction += "\nDIRECTRIZ DISCIPLINARIA (ACADÉMICA Y CIENTÍFICA): Priorice la evaluación de hipótesis empíricas, metodología experimental, validez de muestra y contribuciones teóricas al estado del arte."
     elif specialization == "legal":
-        system_instruction += "\nENFOQUE JURÍDICO Y LEGAL: Enfócate en el análisis de cláusulas contractuales, asignación de responsabilidades, riesgos legales, inconsistencias o contradicciones normativas, y el nivel de cumplimiento regulatorio y legal expuesto en el texto."
+        system_instruction += "\nDIRECTRIZ DISCIPLINARIA (JURÍDICA Y CUMPLIMIENTO): Concéntrese en la asignación de responsabilidades, cláusulas de riesgo, contradicciones normativas y grado de cumplimiento regulatorio."
     elif specialization == "financial":
-        system_instruction += "\nENFOQUE FINANCIERO Y DE NEGOCIOS: Prioriza la consistencia de los datos financieros, métricas operativas (EBITDA, ROI, ingresos, costos), proyecciones de mercado, supuestos comerciales de rentabilidad y riesgos macro/microeconómicos analizados en el documento."
+        system_instruction += "\nDIRECTRIZ DISCIPLINARIA (FINANCIERA Y NEGOCIOS): Enfoque el análisis en métricas operativas (ROI, EBITDA, ingresos), hipótesis de mercado, consistencia en balances y proyecciones de riesgo comercial."
 
-    # 5. Configurar la llamada
     config = types.GenerateContentConfig(
         system_instruction=system_instruction,
-        temperature=0.1,  # Temperatura baja para máxima precisión
+        temperature=0.1,
         response_mime_type="application/json",
         response_schema=schema,
     )
 
-    # 6. Ejecutar generación
     response = client.models.generate_content(
         model=model_name,
         contents=f"{prompt_instruction}\n\n{document_text}",
