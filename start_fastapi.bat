@@ -1,0 +1,6 @@
+@echo off
+echo Iniciando Servidor Web FastAPI para SynthMind AI...
+echo Abriendo navegador en http://localhost:8000...
+start http://localhost:8000
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
+pause

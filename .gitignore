@@ -1,0 +1,37 @@
+# SynthMind AI - Git Ignore file
+# Previene la subida de archivos temporales, entornos virtuales y claves secretas a GitHub
+
+# Claves Secretas y Variables de Entorno (¡CRÍTICO!)
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Entornos virtuales de Python
+venv/
+.venv/
+env/
+ENV/
+lib/
+bin/
+include/
+
+# Caché de Python y compilados
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Archivos temporales y de logs
+*.log
+*.sqlite3
+*.pid
+tmp/
+temp/
+
+# Configuraciones de editores e IDEs
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.user
