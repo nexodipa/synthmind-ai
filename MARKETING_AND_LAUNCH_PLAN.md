@@ -11,16 +11,16 @@ Me cansé de perder horas leyendo PDFs densos, reportes financieros y contratos 
 
 Por eso construí SynthMind AI 🚀
 
-Una plataforma agéntica impulsada por Gemini 2.5 que no solo resume texto, sino que:
+Una herramienta impulsada por Gemini 2.5 que no solo resume texto, sino que:
 ✅ Realiza un mapeo conceptual y de tesis respaldado por citas del documento original.
 ✅ Ejecuta auditorías críticas detectando contradicciones internas y vacíos empíricos.
 ✅ Genera informes ejecutivos e impresiones en PDF de alta calidad en segundos.
 
-He decidido liberar todo el código fuente listo para desplegar con $0 costo de servidor.
+He liberado el código fuente; se puede desplegar en planes gratuitos con límites de uso.
 
 Ideal si deseas lanzar tu propio SaaS de análisis documental o integrarlo en tu flujo de trabajo profesional.
 
-🎥 Mira el repositorio y la demo en vivo aquí:
+Mira el repositorio aquí (no hay demo alojada, se ejecuta con tu propia clave de Gemini):
 👉 https://github.com/JosueST-B/synthmind-ai
 
 #ArtificialIntelligence #SaaS #Python #Gemini #IndieHackers #Innovation
@@ -42,16 +42,16 @@ Ideal si deseas lanzar tu propio SaaS de análisis documental o integrarlo en tu
 > 3. Generación de fichas ejecutivas e informes imprimibles en PDF/Word.
 
 **Tuit 3:**
-> Puedes probarlo en vivo o clonar el código completo para lanzar tu propio Micro-SaaS:
+> Puedes clonar el código y ejecutarlo con tu propia clave de Gemini para lanzar tu propio Micro-SaaS:
 > 🔗 Código en GitHub: https://github.com/JosueST-B/synthmind-ai
-> ⚡ Plantilla en Gumroad: [Tu Enlace de Gumroad]
+> ⚡ Plantilla en Gumroad: (pendiente de publicar; añadir el enlace cuando exista)
 
 ---
 
 ## 👾 3. Publicación para Reddit (r/SideProject, r/SaaS, r/Python)
 
 **Título:**
-`I built an open-source Agentic Document Intelligence Engine using Gemini 2.5 & FastAPI (Zero cloud hosting cost)`
+`I built an open-source document analysis tool using Gemini 2.5 & FastAPI (runs on free hosting tiers)`
 
 **Cuerpo:**
 ```text
@@ -86,10 +86,10 @@ Estimado/a [Nombre del Cliente],
 
 Le escribo porque sé el tiempo considerable que toma para un equipo profesional revisar informes técnicos, contratos y balances financieros para identificar inconsistencias y extraer conclusiones clave.
 
-He desarrollado SynthMind AI, un motor de inteligencia agéntica respaldado por la tecnología Gemini 2.5 de Google DeepMind, especializado en la auditoría estructurada y síntesis de documentos extensos.
+He desarrollado SynthMind AI, una herramienta de análisis documental basada en la tecnología Gemini 2.5 de Google DeepMind, especializado en la auditoría estructurada y síntesis de documentos extensos.
 
 Nuestra plataforma permite:
-- Detectar contradicciones contractuales y vacíos empíricos en segundos.
+- Señalar posibles contradicciones contractuales y vacíos empíricos en segundos, para que una persona los revise.
 - Generar informes ejecutivos formateados en PDF y Word listos para presentación a clientes.
 - Mantener un nivel estricto de trazabilidad sin alucinaciones.
 

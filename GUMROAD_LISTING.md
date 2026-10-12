@@ -7,7 +7,7 @@ Este archivo contiene el texto exacto (copia y pega) y las instrucciones para pu
 ## 📋 Información Básica del Producto
 
 *   **Nombre del Producto:** `SynthMind AI Enterprise Edition`
-*   **Subtítulo / Headline:** `Lanza tu propio Micro-SaaS agéntico de análisis documental en horas, no en semanas.`
+*   **Subtítulo / Headline:** `Plantilla en Python para construir tu propia herramienta de análisis de documentos con Gemini.`
 *   **Tipo de Producto:** `Digital product / Code & Template`
 *   **Precio Sugerido:** `$29 USD` (Starter) | `$49 USD` (Pro License)
 
@@ -16,9 +16,9 @@ Este archivo contiene el texto exacto (copia y pega) y las instrucciones para pu
 ## 📝 Descripción del Producto (Copia y Pega este texto en Gumroad)
 
 ```markdown
-### Lanza tu propio Micro-SaaS agéntico de análisis documental con costo de hosting $0
+### Plantilla en Python para análisis de documentos con Gemini
 
-**SynthMind AI** es una plantilla de software lista para producción diseñada para emprendedores, desarrolladores y consultores que desean ofrecer servicios o lanzar un SaaS de auditoría y síntesis agéntica de documentos PDF utilizando la API de **Gemini 2.5 de Google DeepMind**.
+**SynthMind AI** es una plantilla de código abierto (proyecto de portafolio, sin demo alojada) pensada para emprendedores, desarrolladores y consultores que desean ofrecer servicios o lanzar un SaaS de auditoría y síntesis de documentos PDF utilizando la API de **Gemini 2.5 de Google DeepMind**.
 
 ---
 
@@ -28,10 +28,10 @@ Este archivo contiene el texto exacto (copia y pega) y las instrucciones para pu
    - **FastAPI Backend + SPA**: Aplicación de una sola página en HTML5 + Tailwind CSS con tema oscuro minimalista (estilo Vercel/Stripe).
    - **Streamlit App**: Interfaz alternativa optimizada para despliegue instantáneo a 1-clic en Streamlit Community Cloud.
 
-2. **Motor Agéntico Avanzado (`gemini_engine.py`)**:
-   - Salida estructurada garantizada mediante esquemas tipados de Pydantic.
-   - Flujo de razonamiento Chain-of-Thought (CoT) para análisis libre de alucinaciones.
-   - Extracción directa de archivos PDF, TXT y MD sin APIs de terceros costosas.
+2. **Motor de análisis (`gemini_engine.py`)**:
+   - Salida estructurada validada con esquemas tipados de Pydantic (el contenido lo genera el modelo y debe revisarse).
+   - Flujo de razonamiento paso a paso que reduce, pero no elimina, errores del modelo.
+   - Extracción directa de archivos PDF, TXT y MD sin servicios de extracción de pago.
 
 3. **Especialización Disciplinaria por Nichos**:
    - **Investigación Académica**: Evaluación de hipótesis, variables y rigor metodológico.
@@ -46,7 +46,7 @@ Este archivo contiene el texto exacto (copia y pega) y las instrucciones para pu
    - Descarga de reportes en **Markdown (.md)** formateados para Microsoft Word.
    - Generación de informes en **HTML imprimible** con tipografía ejecutiva (Merriweather/Inter), listos para guardarse como PDF profesional mediante Ctrl+P.
 
-6. **Despliegue a $0 Costo de Servidor**:
+6. **Despliegue en planes gratuitos**:
    - Manual completo de despliegue paso a paso (`DEPLOYMENT.md`).
    - Scripts de ejecución en 1-clic para Windows (`.bat`) y Unix (`.sh`).
    - Archivos de configuración pregenerados (`.gitignore`, `runtime.txt`, `requirements.txt`).

@@ -1,10 +1,10 @@
-# SynthMind AI — Análisis Agéntico Documental ($0 Costo)
+# SynthMind AI — Análisis y síntesis de documentos con Gemini
 
-SynthMind AI es un Micro-SaaS agéntico diseñado para el análisis crítico, extracción estructurada de conceptos y síntesis ejecutiva de documentos densos (PDFs, investigaciones, reportes técnicos) utilizando los modelos inteligentes Gemini 2.5 (Flash y Pro) de Google DeepMind.
+SynthMind AI es un prototipo de aplicación para análisis crítico, extracción estructurada de conceptos y síntesis de documentos densos (PDF, TXT, MD) mediante los modelos Gemini 2.5 (Flash y Pro) de Google. Es un proyecto de portafolio: no tiene demo alojada públicamente y sus resultados son generados por un modelo de lenguaje, por lo que deben revisarse antes de usarse en decisiones legales, financieras o académicas.
 
-Este proyecto cuenta con dos opciones de interfaz totalmente funcionales:
-1.  **SPA Interactiva (FastAPI + Tailwind CSS)**: Interfaz de una sola página ultra-rápida y estilizada con modo oscuro, tarjetas de conceptos dinámicas, barra de certeza e indicadores paso a paso.
-2.  **Dashboard Streamlit**: Una versión alternativa lista para el despliegue automático en la nube gratuita de Streamlit.
+Incluye dos interfaces:
+1.  **SPA Interactiva (FastAPI + Tailwind CSS)**: Interfaz de una sola página con modo oscuro, tarjetas de conceptos dinámicas, barra de certeza e indicadores paso a paso.
+2.  **Dashboard Streamlit**: Una versión alternativa pensada para desplegarse en Streamlit Community Cloud.
 
 ---
 
@@ -35,7 +35,9 @@ Hemos creado scripts de ejecución rápida para que no tengas que escribir coman
 
 ---
 
-## ☁️ Guía de Despliegue en la Nube ($0 Costo)
+## ☁️ Guía de Despliegue en la Nube
+
+Los planes gratuitos de Streamlit y Render permiten desplegarlo sin costo de servidor, con límites de uso. El uso de la API de Gemini depende de la cuota de tu propia clave (el nivel gratuito tiene límites y condiciones que pueden cambiar).
 
 ### Opción A: Streamlit Community Cloud (Recomendado — 2 Minutos)
 1.  Sube esta carpeta a un repositorio público o privado en tu cuenta de **GitHub**.
